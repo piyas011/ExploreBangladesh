@@ -57,23 +57,45 @@ function getFeatureArea(feature: GeoJSON.Feature, level: GeoLevel): GeoArea {
   return toArea(feature, level);
 }
 
-function styleArea(selected?: { color: string }) {
+function getSelectionWeight(zoom: number) {
+  return Math.min(2.4, Math.max(0.55, 0.55 + (zoom - 5) * 0.25));
+}
+
+function styleArea(
+  area: GeoArea,
+  selected: { color: string } | undefined,
+  zoom = 7,
+  hovered = false,
+) {
   if (!selected) {
     return {
-      color: "transparent",
-      fillColor: "transparent",
-      fillOpacity: 0,
-      weight: 0,
-      opacity: 0,
+      color: hovered ? "#ffffff" : "#fffdfa",
+      fillColor: hovered ? "#9fc6a8" : "#d9d4c8",
+      fillOpacity: 1,
+      weight: hovered
+        ? getSelectionWeight(zoom) + 0.4
+        : Math.max(0.35, getSelectionWeight(zoom) * 0.55),
+      opacity: hovered ? 1 : 0.92,
+      className: "area-polygon",
     };
   }
 
+  const centralDistrict =
+    area.level === "district" && area.parentName === "Dhaka";
+
   return {
     color: "#ffffff",
-    fillColor: "#b7d9c5",
-    fillOpacity: 0.68,
-    weight: 1.5,
-    opacity: 0.98,
+    fillColor: centralDistrict
+      ? hovered
+        ? "#d96f66"
+        : "#e98b82"
+      : hovered
+        ? "#17823f"
+        : "#2f9e44",
+    fillOpacity: 1,
+    weight: getSelectionWeight(zoom) + (hovered ? 0.55 : 0),
+    opacity: 1,
+    className: "area-polygon",
   };
 }
 
@@ -104,18 +126,22 @@ function MapEvents({
 function ZoomLevelSync({
   automatic,
   onLevelChange,
+  onZoomChange,
 }: {
   automatic: boolean;
   onLevelChange: (level: GeoLevel) => void;
+  onZoomChange: (zoom: number) => void;
 }) {
   const map = useMap();
 
   useEffect(() => {
+    onZoomChange(map.getZoom());
     if (automatic) onLevelChange(levelForZoom(map.getZoom()));
-  }, [automatic, map, onLevelChange]);
+  }, [automatic, map, onLevelChange, onZoomChange]);
 
   useMapEvents({
     zoomend() {
+      onZoomChange(map.getZoom());
       if (automatic) onLevelChange(levelForZoom(map.getZoom()));
     },
   });
@@ -193,10 +219,10 @@ function SelectedAreaMarkers({
             center={[center.lat, center.lng]}
             radius={4.1}
             pathOptions={{
-              color: "#0f766e",
-              fillColor: "#0f766e",
+              color: "#ffffff",
+              fillColor: "#287b4a",
               fillOpacity: 1,
-              weight: 0,
+              weight: 2,
             }}
           >
             <Tooltip
@@ -342,6 +368,7 @@ export function TravelMap({
   showSelectedNames,
 }: TravelMapProps) {
   const [zoomLevel, setZoomLevel] = useState<GeoLevel>("division");
+  const [mapZoom, setMapZoom] = useState(7);
   const visibleLevel = activeLevel === "all" ? zoomLevel : activeLevel;
   const visibleData =
     visibleLevel === "division"
@@ -352,26 +379,46 @@ export function TravelMap({
   const featureLayers = useRef(
     new Map<string, { path: L.Polygon; area: GeoArea }>(),
   );
+  const selectionHandlers = useRef({
+    mapMode,
+    dragSelectMode,
+    onToggleArea,
+    selectedAreas,
+    language,
+    mapZoom,
+  });
 
   useEffect(() => {
-    for (const [id, { path }] of featureLayers.current) {
-      path.setStyle(styleArea(selectedAreas[id]));
+    selectionHandlers.current = {
+      mapMode,
+      dragSelectMode,
+      onToggleArea,
+      selectedAreas,
+      language,
+      mapZoom,
+    };
+  }, [mapMode, dragSelectMode, onToggleArea, selectedAreas, language, mapZoom]);
+
+  useEffect(() => {
+    for (const [id, { path, area }] of featureLayers.current) {
+      path.setStyle(styleArea(area, selectedAreas[id], mapZoom));
     }
-  }, [activeLevel, selectedAreas, visibleLevel]);
+  }, [activeLevel, mapZoom, selectedAreas, visibleLevel]);
 
   return (
-    <div className="h-[min(68vh,760px)] min-h-[360px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#edf5f2]">
+    <div className="h-[min(72vh,780px)] min-h-[380px] w-full overflow-hidden rounded-md border border-[#ded8cb] bg-[#f0ede5]">
       <MapContainer
         center={[23.7, 90.3]}
         zoom={7}
         zoomControl={false}
         attributionControl={false}
         scrollWheelZoom
-        className="h-full w-full bg-[#edf5f2]"
+        className="h-full w-full bg-[#f0ede5]"
       >
         <ZoomLevelSync
           automatic={activeLevel === "all"}
           onLevelChange={setZoomLevel}
+          onZoomChange={setMapZoom}
         />
         <MapSelectionFocus
           selectedAreas={selectedAreas}
@@ -391,18 +438,58 @@ export function TravelMap({
           <GeoJSON
             key={`${visibleLevel}-${collectionIndex}`}
             data={collection}
-            style={(feature) =>
-              styleArea(
-                selectedAreas[
-                  getFeatureArea(feature as GeoJSON.Feature, visibleLevel).id
-                ],
-              )
-            }
+            style={(feature) => {
+              const area = getFeatureArea(
+                feature as GeoJSON.Feature,
+                visibleLevel,
+              );
+              return styleArea(area, selectedAreas[area.id], mapZoom);
+            }}
             onEachFeature={(feature, layer) => {
               const area = getFeatureArea(feature, visibleLevel);
               const polygonLayer = layer as L.Polygon;
               featureLayers.current.set(area.id, { path: polygonLayer, area });
-              polygonLayer.setStyle(styleArea(selectedAreas[area.id]));
+              polygonLayer.setStyle(
+                styleArea(area, selectedAreas[area.id], mapZoom),
+              );
+              polygonLayer.bindTooltip(
+                () =>
+                  getAreaDisplayName(area, selectionHandlers.current.language),
+                {
+                  sticky: true,
+                  direction: "top",
+                  className: "area-hover-label",
+                },
+              );
+              polygonLayer.on("mouseover", () => {
+                const handlers = selectionHandlers.current;
+                polygonLayer.setStyle(
+                  styleArea(
+                    area,
+                    handlers.selectedAreas[area.id],
+                    handlers.mapZoom,
+                    true,
+                  ),
+                );
+                polygonLayer.bringToFront();
+              });
+              polygonLayer.on("mouseout", () => {
+                const handlers = selectionHandlers.current;
+                polygonLayer.setStyle(
+                  styleArea(
+                    area,
+                    handlers.selectedAreas[area.id],
+                    handlers.mapZoom,
+                  ),
+                );
+              });
+              polygonLayer.on("click", (event: L.LeafletMouseEvent) => {
+                const handlers = selectionHandlers.current;
+                if (handlers.mapMode !== "select" || handlers.dragSelectMode)
+                  return;
+                L.DomEvent.stopPropagation(event.originalEvent);
+                handlers.onToggleArea(area);
+              });
             }}
           />
         ))}

@@ -2,20 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import {
-  Download,
-  Globe2,
-  Move,
-  Save,
-  Sparkles,
-  UploadCloud,
-} from "lucide-react";
+import { Download, Move, Save, Sparkles, UploadCloud } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import divisionGeoJson from "@/data/bangladesh-admin1.json";
 import districtGeoJson from "@/data/bangladesh-admin2.json";
 import upazilaGeoJson from "@/data/bangladesh-admin3.json";
 import {
-  coverageReport,
   findAreaAtPoint,
   getAreaDisplayName,
   type GeoArea,
@@ -34,32 +26,9 @@ import {
   type TravelPin,
 } from "@/lib/storage";
 import { GeographicSearch } from "@/components/geographic-search";
+import { DivisionAreaBrowser } from "@/components/division-area-browser";
 import { TravelStats } from "@/components/travel-stats";
 import { TravelPinForm, type PinDraft } from "@/components/travel-pin-form";
-
-const coverageNameKeys: Record<
-  (typeof coverageReport)[number]["level"],
-  TranslationKey
-> = {
-  division: "divisions",
-  district: "districts",
-  upazila: "upazilas",
-  union: "unions",
-  village: "villages",
-  ward: "wards",
-};
-
-const coverageNoteKeys: Record<
-  (typeof coverageReport)[number]["level"],
-  TranslationKey
-> = {
-  division: "coverageDivisionNote",
-  district: "coverageDistrictNote",
-  upazila: "coverageUpazilaNote",
-  union: "coverageUnionNote",
-  village: "coverageVillageNote",
-  ward: "coverageWardNote",
-};
 
 const TravelMap = dynamic(
   () => import("@/components/travel-map").then((mod) => mod.TravelMap),
@@ -166,7 +135,7 @@ export function TravelTrackerPage() {
   function handleSaveState() {
     setSaveState("saving");
     try {
-      saveTravelState({ selectedAreas, pins });
+      saveTravelState({ selectedAreas, pins, showSelectedNames });
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 1200);
     } catch {
@@ -279,8 +248,8 @@ export function TravelTrackerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b border-slate-200 bg-white/95">
+    <div className="min-h-screen bg-[#f7f5ef] text-[#26352b]">
+      <header className="border-b border-[#e4dfd4] bg-[#fbfaf6]">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-600">
@@ -312,9 +281,9 @@ export function TravelTrackerPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <section className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.75fr)]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <main className="mx-auto max-w-[1440px] px-3 py-4 sm:px-6 sm:py-6">
+        <section className="mb-5 grid items-start gap-3 xl:grid-cols-[minmax(285px,0.42fr)_minmax(0,1fr)] xl:gap-4">
+          <div className="xl:col-start-2 xl:row-start-1 rounded-xl border border-[#e4dfd4] bg-[#fffdfa] p-3 shadow-sm sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -355,27 +324,6 @@ export function TravelTrackerPage() {
                           : "save",
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleExportJson}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <Download className="h-4 w-4" /> JSON
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportCsv}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <UploadCloud className="h-4 w-4" /> CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={handleMapExportPng}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <Sparkles className="h-4 w-4" /> PNG
-                </button>
               </div>
             </div>
 
@@ -403,7 +351,7 @@ export function TravelTrackerPage() {
 
             <div
               ref={mapPanelRef}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-[#edf5f2]"
+              className="overflow-hidden rounded-md border border-[#ded8cb] bg-[#f0ede5]"
             >
               <TravelMap
                 divisionData={divisionFeatures}
@@ -422,6 +370,30 @@ export function TravelTrackerPage() {
               />
             </div>
 
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={handleMapExportPng}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-[#ded8cb] bg-[#fffdfa] px-2 py-2 text-xs font-medium text-[#314338] hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <Sparkles aria-hidden="true" className="h-3.5 w-3.5" /> PNG
+              </button>
+              <button
+                type="button"
+                onClick={handleExportJson}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-[#ded8cb] bg-[#fffdfa] px-2 py-2 text-xs font-medium text-[#314338] hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <Download aria-hidden="true" className="h-3.5 w-3.5" /> JSON
+              </button>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-[#ded8cb] bg-[#fffdfa] px-2 py-2 text-xs font-medium text-[#314338] hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <UploadCloud aria-hidden="true" className="h-3.5 w-3.5" /> CSV
+              </button>
+            </div>
+
             {dragSelectMode && mapMode === "select" ? (
               <p className="mt-2 text-xs text-slate-500">
                 {t("dragSelectHint")}
@@ -434,46 +406,15 @@ export function TravelTrackerPage() {
             ) : null}
           </div>
 
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <Globe2 className="h-4 w-4 text-violet-600" />
-                  {t("coverage")}
-                </div>
-                <span className="rounded-full bg-violet-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-violet-700">
-                  {t("dataStatus")}
-                </span>
-              </div>
-              <div className="space-y-2 text-sm text-slate-600">
-                {coverageReport.map((item) => (
-                  <div
-                    key={item.level}
-                    className="rounded-xl border border-slate-100 bg-slate-50 p-2"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium text-slate-800">
-                        {t(coverageNameKeys[item.level])}
-                      </span>
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-slate-600">
-                        {t(
-                          item.level === "ward"
-                            ? "approximate"
-                            : item.level === "union" || item.level === "village"
-                              ? "missing"
-                              : "verified",
-                        )}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {t(coverageNoteKeys[item.level])}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <aside className="space-y-3 xl:col-start-1 xl:row-start-1">
+            <DivisionAreaBrowser
+              areas={areaList}
+              selectedAreas={visibleSelectedAreas}
+              onToggleArea={onToggleArea}
+              onVisibleLevelChange={setActiveLevel}
+            />
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-md border border-[#e4dfd4] bg-[#fffdfa] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-sm font-semibold text-slate-800">
                   {t("selectionStatus")}
@@ -502,7 +443,7 @@ export function TravelTrackerPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </aside>
         </section>
 
         <section className="mb-6 grid gap-4 xl:grid-cols-[1.1fr_1.3fr]">
