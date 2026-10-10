@@ -1,8 +1,11 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f2f6f4;
+  --foreground: #172b2b;
+  --map-boundary: #647b80;
+  --map-selected: #0f766e;
 }
 
 @theme inline {
@@ -12,15 +15,73 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    var(--font-geist-sans), "Nirmala UI", "Noto Sans Bengali", sans-serif;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #e6eeeb;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 12px;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--map-selected);
+  outline-offset: 2px;
+}
+
+.area-selection-label {
+  max-width: 160px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 3px;
+  background: rgba(15, 55, 53, 0.9);
+  color: #fff;
+  font-family:
+    var(--font-geist-sans), "Nirmala UI", "Noto Sans Bengali", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  box-shadow: 0 1px 4px rgba(16, 36, 34, 0.25);
+}
+
+.area-selection-label::before {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .leaflet-control-zoom {
+    margin: 10px !important;
+  }
+
+  .leaflet-control-attribution {
+    max-width: 72vw;
+    font-size: 9px;
+  }
 }
