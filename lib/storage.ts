@@ -22,6 +22,7 @@ export type TravelPin = {
 export type TravelState = {
   selectedAreas: Record<string, SelectedArea>;
   pins: TravelPin[];
+  showSelectedNames?: boolean;
 };
 
 export const STORAGE_KEY = "bangladesh-travel-tracker-state";
@@ -66,27 +67,44 @@ export function getDefaultBackgroundColor() {
 
 export function loadTravelState(): TravelState {
   if (typeof window === "undefined") {
-    return { selectedAreas: {}, pins: [] };
+    return { selectedAreas: {}, pins: [], showSelectedNames: true };
   }
 
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (!saved) return { selectedAreas: {}, pins: [] };
+    if (!saved) return { selectedAreas: {}, pins: [], showSelectedNames: true };
 
     const parsed = JSON.parse(saved) as Partial<TravelState>;
+    const selectedAreas =
+      parsed.selectedAreas && typeof parsed.selectedAreas === "object"
+        ? parsed.selectedAreas
+        : {};
+    const pins = Array.isArray(parsed.pins) ? parsed.pins : [];
+
     return {
-      selectedAreas: parsed.selectedAreas ?? {},
-      pins: parsed.pins ?? [],
+      selectedAreas,
+      pins,
+      showSelectedNames:
+        typeof parsed.showSelectedNames === "boolean"
+          ? parsed.showSelectedNames
+          : true,
     };
   } catch {
-    return { selectedAreas: {}, pins: [] };
+    return { selectedAreas: {}, pins: [], showSelectedNames: true };
   }
 }
 
 export function saveTravelState(state: TravelState) {
   if (typeof window === "undefined") return;
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  window.localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      selectedAreas: state.selectedAreas,
+      pins: state.pins,
+      showSelectedNames: state.showSelectedNames ?? true,
+    }),
+  );
 }
 
 export function ensureAreaColor(

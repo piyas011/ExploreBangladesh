@@ -69,6 +69,7 @@ const messages = {
     noPins: "No travel pins saved yet.",
     addPinPrompt: "Choose pin mode, then click the map to add a place.",
     remove: "Remove",
+    resetAllSelections: "Reset all selections",
     searchAreas: "Search geographic areas",
     showVisitedOnly: "Visited only",
     allAreas: "All areas",
@@ -108,6 +109,8 @@ const messages = {
     bangla: "বাংলা",
     areaNotFound: "No boundary contains the center of that selection.",
     exportFailed: "Could not export the map image.",
+    showSelectedPlaceNames: "Show selected place names",
+    showSelectedPlaceNamesHint: "Toggle selected labels on the map.",
   },
   bn: {
     brand: "বাংলাদেশ ভ্রমণ ট্র্যাকার",
@@ -160,6 +163,7 @@ const messages = {
     noPins: "এখনো কোনো ভ্রমণ পিন সংরক্ষিত নেই।",
     addPinPrompt: "পিন মোড চালু করে জায়গা যোগ করতে মানচিত্রে ক্লিক করুন।",
     remove: "সরান",
+    resetAllSelections: "সব নির্বাচন মুছে দিন",
     searchAreas: "ভৌগোলিক এলাকা খুঁজুন",
     showVisitedOnly: "শুধু ভ্রমণ করা",
     allAreas: "সব এলাকা",
@@ -199,6 +203,8 @@ const messages = {
     bangla: "বাংলা",
     areaNotFound: "নির্বাচনের কেন্দ্র কোনো সীমানার ভেতরে পড়েনি।",
     exportFailed: "মানচিত্রের ছবি তৈরি করা যায়নি।",
+    showSelectedPlaceNames: "নির্বাচিত জায়গার নাম দেখাও",
+    showSelectedPlaceNamesHint: "মানচিত্রে নির্বাচিত এলাকার নাম দেখান/লুকান।",
   },
 } as const;
 

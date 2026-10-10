@@ -55,20 +55,20 @@ select:focus-visible {
 }
 
 .area-selection-label {
-  max-width: 160px;
-  padding: 3px 7px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 3px;
-  background: rgba(15, 55, 53, 0.9);
-  color: #fff;
+  max-width: 150px;
+  padding: 0;
+  border: none !important;
+  background: transparent !important;
+  color: #0f172a;
   font-family:
-    var(--font-geist-sans), "Nirmala UI", "Noto Sans Bengali", sans-serif;
-  font-size: 11px;
+    var(--font-geist-sans), "Noto Sans Bengali", "Nirmala UI", sans-serif;
+  font-size: 10.5px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.2;
   text-align: center;
   white-space: normal;
-  box-shadow: 0 1px 4px rgba(16, 36, 34, 0.25);
+  box-shadow: none !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .area-selection-label::before {

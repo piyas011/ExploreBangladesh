@@ -77,6 +77,9 @@ export function TravelTrackerPage() {
   const { language, t } = useLanguage();
   const hydrated = useHydrated();
   const [initialState] = useState(() => loadTravelState());
+  const [showSelectedNames, setShowSelectedNames] = useState<boolean>(
+    initialState.showSelectedNames ?? true,
+  );
   const [divisionFeatures] = useState<GeoJSON.FeatureCollection[]>([
     divisionGeoJson as GeoJSON.FeatureCollection,
   ]);
@@ -105,8 +108,8 @@ export function TravelTrackerPage() {
   const visiblePins = hydrated ? pins : [];
 
   useEffect(() => {
-    saveTravelState({ selectedAreas, pins });
-  }, [selectedAreas, pins]);
+    saveTravelState({ selectedAreas, pins, showSelectedNames });
+  }, [selectedAreas, pins, showSelectedNames]);
 
   const areaList = useMemo<GeoArea[]>(() => {
     const all: GeoArea[] = [];
@@ -216,7 +219,10 @@ export function TravelTrackerPage() {
     try {
       const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(mapPanelRef.current, {
-        backgroundColor: "#f8fafc",
+        backgroundColor: "#edf5f2",
+        scale: 2,
+        useCORS: true,
+        logging: false,
       });
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
@@ -225,6 +231,13 @@ export function TravelTrackerPage() {
     } catch {
       setNotice("exportFailed");
     }
+  }
+
+  function handleResetAllSelections() {
+    if (typeof window === "undefined") return;
+    const confirmed = window.confirm(t("resetAllSelections"));
+    if (!confirmed) return;
+    setSelectedAreas({});
   }
 
   function handlePinRequest(latlng: { lat: number; lng: number }) {
@@ -301,10 +314,7 @@ export function TravelTrackerPage() {
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.75fr)]">
-          <div
-            ref={mapPanelRef}
-            className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -369,20 +379,49 @@ export function TravelTrackerPage() {
               </div>
             </div>
 
-            <TravelMap
-              divisionData={divisionFeatures}
-              districtData={districtFeatures}
-              upazilaData={upazilaFeatures}
-              activeLevel={activeLevel}
-              language={language}
-              dragSelectMode={dragSelectMode}
-              selectedAreas={visibleSelectedAreas}
-              onToggleArea={onToggleArea}
-              onMapPinRequest={handlePinRequest}
-              pins={visiblePins}
-              mapMode={mapMode}
-              onSelectionMiss={() => setNotice("areaNotFound")}
-            />
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <label className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={showSelectedNames}
+                  onChange={(event) =>
+                    setShowSelectedNames(event.target.checked)
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                {t("showSelectedPlaceNames")}
+              </label>
+
+              <button
+                type="button"
+                onClick={handleResetAllSelections}
+                className="rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
+              >
+                {t("resetAllSelections")}
+              </button>
+            </div>
+
+            <div
+              ref={mapPanelRef}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-[#edf5f2]"
+            >
+              <TravelMap
+                divisionData={divisionFeatures}
+                districtData={districtFeatures}
+                upazilaData={upazilaFeatures}
+                activeLevel={activeLevel}
+                language={language}
+                dragSelectMode={dragSelectMode}
+                selectedAreas={visibleSelectedAreas}
+                onToggleArea={onToggleArea}
+                onMapPinRequest={handlePinRequest}
+                pins={visiblePins}
+                mapMode={mapMode}
+                onSelectionMiss={() => setNotice("areaNotFound")}
+                showSelectedNames={showSelectedNames}
+              />
+            </div>
+
             {dragSelectMode && mapMode === "select" ? (
               <p className="mt-2 text-xs text-slate-500">
                 {t("dragSelectHint")}

@@ -2,12 +2,13 @@
 
 import L from "leaflet";
 import {
+  CircleMarker,
   GeoJSON,
   MapContainer,
   Marker,
   Popup,
   Rectangle,
-  TileLayer,
+  Tooltip,
   useMap,
   useMapEvents,
 } from "react-leaflet";
@@ -19,15 +20,7 @@ import {
   type GeoLevel,
 } from "@/lib/geo-data";
 import type { Language } from "@/lib/i18n";
-import { getDefaultBackgroundColor } from "@/lib/storage";
 import { useEffect, useRef, useState, type RefObject } from "react";
-
-const markerIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
 
 export type TravelMapProps = {
   divisionData: GeoJSON.FeatureCollection[];
@@ -50,20 +43,37 @@ export type TravelMapProps = {
     relatedAreaId?: string;
   }[];
   mapMode: "select" | "pin";
+  showSelectedNames: boolean;
 };
+
+const markerIcon = L.icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
 
 function getFeatureArea(feature: GeoJSON.Feature, level: GeoLevel): GeoArea {
   return toArea(feature, level);
 }
 
-function styleArea(selected?: { color: string }, hovered = false) {
+function styleArea(selected?: { color: string }) {
+  if (!selected) {
+    return {
+      color: "transparent",
+      fillColor: "transparent",
+      fillOpacity: 0,
+      weight: 0,
+      opacity: 0,
+    };
+  }
+
   return {
-    color: selected?.color ?? (hovered ? "#176b68" : "#647b80"),
-    fillColor:
-      selected?.color ?? (hovered ? "#a8d5ce" : getDefaultBackgroundColor()),
-    fillOpacity: selected ? 0.72 : hovered ? 0.55 : 0.32,
-    weight: selected ? 3 : hovered ? 2 : 1,
-    opacity: selected ? 1 : 0.86,
+    color: "#ffffff",
+    fillColor: "#b7d9c5",
+    fillOpacity: 0.68,
+    weight: 1.5,
+    opacity: 0.98,
   };
 }
 
@@ -152,6 +162,56 @@ function MapSelectionFocus({
   }, [featureLayers, map, selectedAreas, visibleLevel]);
 
   return null;
+}
+
+function SelectedAreaMarkers({
+  featureLayers,
+  selectedAreas,
+  visibleLevel,
+  language,
+  showSelectedNames,
+}: {
+  featureLayers: RefObject<Map<string, { path: L.Polygon; area: GeoArea }>>;
+  selectedAreas: Record<string, { id: string; name: string; color: string }>;
+  visibleLevel: GeoLevel;
+  language: Language;
+  showSelectedNames: boolean;
+}) {
+  if (!showSelectedNames) return null;
+
+  return (
+    <>
+      {Object.values(selectedAreas).map((area) => {
+        const entry = featureLayers.current.get(area.id);
+        if (!entry || entry.area.level !== visibleLevel) return null;
+
+        const center = entry.path.getBounds().getCenter();
+
+        return (
+          <CircleMarker
+            key={area.id}
+            center={[center.lat, center.lng]}
+            radius={4.1}
+            pathOptions={{
+              color: "#0f766e",
+              fillColor: "#0f766e",
+              fillOpacity: 1,
+              weight: 0,
+            }}
+          >
+            <Tooltip
+              permanent
+              direction="bottom"
+              offset={[0, 10]}
+              className="area-selection-label"
+            >
+              {getAreaDisplayName(entry.area, language)}
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
+    </>
+  );
 }
 
 function DragAreaSelector({
@@ -279,6 +339,7 @@ export function TravelMap({
   pins,
   mapMode,
   onSelectionMiss,
+  showSelectedNames,
 }: TravelMapProps) {
   const [zoomLevel, setZoomLevel] = useState<GeoLevel>("division");
   const visibleLevel = activeLevel === "all" ? zoomLevel : activeLevel;
@@ -291,35 +352,22 @@ export function TravelMap({
   const featureLayers = useRef(
     new Map<string, { path: L.Polygon; area: GeoArea }>(),
   );
-  const latestHandlers = useRef({ mapMode, onToggleArea, selectedAreas });
-  useEffect(() => {
-    latestHandlers.current = { mapMode, onToggleArea, selectedAreas };
-  }, [mapMode, onToggleArea, selectedAreas]);
 
   useEffect(() => {
-    for (const [id, { path, area }] of featureLayers.current) {
-      const selected = selectedAreas[id];
-      path.setStyle(styleArea(selected));
-      path.unbindTooltip();
-      if (selected) {
-        path.bindTooltip(getAreaDisplayName(area, language), {
-          permanent: true,
-          direction: "center",
-          className: "area-selection-label",
-          opacity: 1,
-        });
-        path.openTooltip();
-      }
+    for (const [id, { path }] of featureLayers.current) {
+      path.setStyle(styleArea(selectedAreas[id]));
     }
-  }, [activeLevel, language, selectedAreas, visibleLevel]);
+  }, [activeLevel, selectedAreas, visibleLevel]);
 
   return (
-    <div className="h-[min(68vh,760px)] min-h-[360px] w-full overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+    <div className="h-[min(68vh,760px)] min-h-[360px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#edf5f2]">
       <MapContainer
         center={[23.7, 90.3]}
         zoom={7}
+        zoomControl={false}
+        attributionControl={false}
         scrollWheelZoom
-        className="h-full w-full"
+        className="h-full w-full bg-[#edf5f2]"
       >
         <ZoomLevelSync
           automatic={activeLevel === "all"}
@@ -330,9 +378,13 @@ export function TravelMap({
           visibleLevel={visibleLevel}
           featureLayers={featureLayers}
         />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+
+        <SelectedAreaMarkers
+          featureLayers={featureLayers}
+          selectedAreas={selectedAreas}
+          visibleLevel={visibleLevel}
+          language={language}
+          showSelectedNames={showSelectedNames}
         />
 
         {visibleData.map((collection, collectionIndex) => (
@@ -348,34 +400,23 @@ export function TravelMap({
             }
             onEachFeature={(feature, layer) => {
               const area = getFeatureArea(feature, visibleLevel);
-              const path = layer as L.Polygon;
-              featureLayers.current.set(area.id, { path, area });
-              path.on("add", () => {
-                path.getElement()?.setAttribute("data-area-id", area.id);
-              });
-              path.on("click", (event: L.LeafletMouseEvent) => {
-                if (latestHandlers.current.mapMode === "select") {
-                  L.DomEvent.stopPropagation(event.originalEvent);
-                  latestHandlers.current.onToggleArea(area);
-                }
-              });
-              path.on("mouseover", () => {
-                path.setStyle(
-                  styleArea(
-                    latestHandlers.current.selectedAreas[area.id],
-                    true,
-                  ),
-                );
-                path.bringToFront();
-              });
-              path.on("mouseout", () => {
-                path.setStyle(
-                  styleArea(latestHandlers.current.selectedAreas[area.id]),
-                );
-              });
+              const polygonLayer = layer as L.Polygon;
+              featureLayers.current.set(area.id, { path: polygonLayer, area });
+              polygonLayer.setStyle(styleArea(selectedAreas[area.id]));
             }}
           />
         ))}
+
+        {dragSelectMode ? (
+          <DragAreaSelector
+            enabled={dragSelectMode}
+            mapMode={mapMode}
+            collections={visibleData}
+            level={visibleLevel}
+            onToggleArea={onToggleArea}
+            onSelectionMiss={onSelectionMiss}
+          />
+        ) : null}
 
         {pins.map((pin) => (
           <Marker
@@ -394,14 +435,6 @@ export function TravelMap({
         ))}
 
         <MapEvents onMapPinRequest={onMapPinRequest} mapMode={mapMode} />
-        <DragAreaSelector
-          enabled={dragSelectMode}
-          mapMode={mapMode}
-          collections={visibleData}
-          level={visibleLevel}
-          onToggleArea={onToggleArea}
-          onSelectionMiss={onSelectionMiss}
-        />
       </MapContainer>
     </div>
   );
